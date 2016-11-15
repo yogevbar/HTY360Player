@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.homepage         = "https://github.com/islate/HTY360Player"
   s.license          = 'MIT'
   s.author           = { "林溢泽" => "linyize@gmail.com" }
-  s.source           = { :git => "https://github.com/yogevbar/HTY360Player.git", :branch => "master" }
+  s.source           = { :git => "https://github.com/yogevbar/HTY360Player.git", :branch => "master", :tag => s.version.to_s}
 
   s.ios.deployment_target = '7.0'
 
