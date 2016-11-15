@@ -99,10 +99,6 @@ GLint uniforms[NUM_UNIFORMS];
     UIPinchGestureRecognizer *pinchRecognizer = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchGesture:)];
     [view addGestureRecognizer:pinchRecognizer];
     
-    UITapGestureRecognizer *singleTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleSingleTapGesture:)];
-    singleTapRecognizer.numberOfTapsRequired = 1;
-    [view addGestureRecognizer:singleTapRecognizer];
-    
     self.preferredFramesPerSecond = 30.0f;
     
     _overture = DEFAULT_OVERTURE;
@@ -569,10 +565,6 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
         _overture = MAX_OVERTURE;
     if(_overture<MIN_OVERTURE)
         _overture = MIN_OVERTURE;
-}
-
-- (void)handleSingleTapGesture:(UITapGestureRecognizer *)recognizer {
-    [_videoPlayerController toggleControls];
 }
 
 @end
