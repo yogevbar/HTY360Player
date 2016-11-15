@@ -4,17 +4,18 @@ Pod::Spec.new do |s|
   s.summary          = "全景视频播放"
 
   s.description      = <<-DESC
-                        全景视频播放 clone from https://github.com/hanton/HTY360Player
+                        全景视频播放
                        DESC
 
   s.homepage         = "https://github.com/islate/HTY360Player"
   s.license          = 'MIT'
   s.author           = { "林溢泽" => "linyize@gmail.com" }
-  s.source           = { :git => "https://github.com/yogevbar/HTY360Player.git", :tag => s.version.to_s }
+  s.source           = { :git => "https://github.com/yogevbar/HTY360Player.git", :branch => "master" }
 
   s.ios.deployment_target = '7.0'
 
   s.source_files = "HTY360Player/HTYGLKVC.{h,m}","HTY360Player/GLProgram.{h,m}","HTY360Player/HTY360PlayerVC.{h,m}"
+  s.resource = 'HTY360Player/HTY360PlayerVC.xib', 'HTY360Player/Assets.xcassets', 'HTY360Player/Shader.{fsh,vsh}'
   s.frameworks = 'AVFoundation','GLKit','CoreMotion'
   
 end
