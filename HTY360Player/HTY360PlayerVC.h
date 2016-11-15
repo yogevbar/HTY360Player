@@ -30,5 +30,5 @@
 - (void)play;
 - (void)pause;
 - (void)gyroButtonRelocate;
-
+- (void)setupVideoPlaybackForURL:(NSURL*)url;
 @end
