@@ -112,7 +112,7 @@ GLint uniforms[NUM_UNIFORMS];
 }
 
 -(UIInterfaceOrientationMask) supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskLandscape;
+    return UIInterfaceOrientationMaskLandscapeRight;
 }
 
 -(void) detectOrientation {
