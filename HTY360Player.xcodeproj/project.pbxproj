@@ -328,7 +328,7 @@
 				INFOPLIST_FILE = HTY360Player/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.nomtek.Spherical-Video-Player.d";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yogevbar.test;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};
@@ -344,7 +344,7 @@
 				INFOPLIST_FILE = HTY360Player/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.nomtek.Spherical-Video-Player.d";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yogevbar.test;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};

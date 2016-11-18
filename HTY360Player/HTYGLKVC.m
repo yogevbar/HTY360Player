@@ -13,7 +13,7 @@
 
 #define MAX_OVERTURE 95.0
 #define MIN_OVERTURE 25.0
-#define DEFAULT_OVERTURE 85.0
+#define DEFAULT_OVERTURE 75.0
 
 #define ES_PI  (3.14159265f)
 
@@ -368,44 +368,42 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     float aspect = fabs(self.view.bounds.size.width / self.view.bounds.size.height);
     GLKMatrix4 projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(_overture), aspect, 0.1f, 400.0f);
     projectionMatrix = GLKMatrix4Rotate(projectionMatrix, ES_PI, 1.0f, 0.0f, 0.0f);
-//    GLKMatrix4MakeLookAt(<#float eyeX#>, <#float eyeY#>, <#float eyeZ#>, <#float centerX#>, <#float centerY#>, <#float centerZ#>, <#float upX#>, <#float upY#>, <#float upZ#>)
     GLKMatrix4 modelViewMatrix = GLKMatrix4Identity;
-    modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 300.0, 300.0, 300.0);
-//    if(_isUsingMotion) {
-        CMDeviceMotion *d = _motionManager.deviceMotion;
-        if (d != nil) {
-            CMAttitude *attitude = d.attitude;
-            
-            if (_referenceAttitude != nil) {
-                [attitude multiplyByInverseOfAttitude:_referenceAttitude];
-            } else {
-                //NSLog(@"was nil : set new attitude", nil);
-                _referenceAttitude = d.attitude;
-            }
-            
-            float cRoll = -fabs(attitude.roll); // Up/Down en landscape
-            float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
-            float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
-            
-            UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
-            if (orientation == UIDeviceOrientationLandscapeRight ){
-                cPitch = cPitch*-1; // correct depth when in landscape right
-            }
-            
-            
-            modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, cRoll); // Up/Down axis
-            modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, cPitch);
-            modelViewMatrix = GLKMatrix4RotateZ(modelViewMatrix, cYaw);
-            
-            modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, ROLL_CORRECTION);
-
-            modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, _fingerRotationX);
-            modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, _fingerRotationY);
-            
-            _savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
-            _savedGyroRotationY = cPitch + _fingerRotationY;
-            
+    modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 230.0, 230.0, 230.0);
+    CMDeviceMotion *d = _motionManager.deviceMotion;
+    if (d != nil) {
+        CMAttitude *attitude = d.attitude;
+        
+        if (_referenceAttitude != nil) {
+            [attitude multiplyByInverseOfAttitude:_referenceAttitude];
+        } else {
+            //NSLog(@"was nil : set new attitude", nil);
+            _referenceAttitude = d.attitude;
         }
+        
+        float cRoll = (attitude.roll); // Up/Down en landscape
+        float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
+        float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
+        
+        UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
+        if (orientation == UIDeviceOrientationLandscapeRight ){
+            cPitch = cPitch*-1; // correct depth when in landscape right
+        }
+        
+        
+        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, cRoll); // Up/Down axis
+        modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, cPitch);
+        modelViewMatrix = GLKMatrix4RotateZ(modelViewMatrix, cYaw);
+        
+        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, ROLL_CORRECTION);
+
+        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, _fingerRotationX);
+        modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, _fingerRotationY);
+        
+        _savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
+        _savedGyroRotationY = cPitch + _fingerRotationY;
+        
+    }
     
     _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
     glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 0, _modelViewProjectionMatrix.m);
