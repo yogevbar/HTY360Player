@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   #
 
   s.name         = "HTY360Player"
-  s.version      = "0.1.1"
+  s.version      = "0.1.2"
   s.summary      = "A Open Source, Ad-free, Native and Universal 360 dgree panorama video player for iOS."
 
   # This description is used to generate tags and improve search results.
