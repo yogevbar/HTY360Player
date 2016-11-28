@@ -16,6 +16,7 @@
 #define DEFAULT_OVERTURE 75.0
 
 #define ES_PI  (3.14159265f)
+#define RADIANS_TO_DEGREES(radians) ((radians) * (180.0 / M_PI))
 
 #define ROLL_CORRECTION ES_PI/2.0
 
@@ -365,11 +366,12 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
 #pragma mark - GLKView and GLKViewController delegate methods
 
 - (void)update {
+    
     float aspect = fabs(self.view.bounds.size.width / self.view.bounds.size.height);
     GLKMatrix4 projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(_overture), aspect, 0.1f, 400.0f);
     projectionMatrix = GLKMatrix4Rotate(projectionMatrix, ES_PI, 1.0f, 0.0f, 0.0f);
     GLKMatrix4 modelViewMatrix = GLKMatrix4Identity;
-    modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 230.0, 230.0, 230.0);
+    modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 300.0, 300.0, 300.0);
     CMDeviceMotion *d = _motionManager.deviceMotion;
     if (d != nil) {
         CMAttitude *attitude = d.attitude;
@@ -381,7 +383,7 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
             _referenceAttitude = d.attitude;
         }
         
-        float cRoll = (attitude.roll); // Up/Down en landscape
+        float cRoll = attitude.roll; // Up/Down en landscape
         float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
         float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
         
@@ -390,23 +392,22 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
             cPitch = cPitch*-1; // correct depth when in landscape right
         }
         
+        GLKVector3 xAxis = GLKVector3Make(1, 0, 0);
+        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cRoll, xAxis.x, xAxis.y, xAxis.z);
         
-        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, cRoll); // Up/Down axis
-        modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, cPitch);
-        modelViewMatrix = GLKMatrix4RotateZ(modelViewMatrix, cYaw);
+        GLKVector3 yAxis = GLKVector3Make(0, 1, 0);
+        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cPitch, yAxis.x, yAxis.y, yAxis.z);
         
-        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, ROLL_CORRECTION);
-
-        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, _fingerRotationX);
-        modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, _fingerRotationY);
+        GLKVector3 zAxis = GLKVector3Make(0, 0, 1);
+        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cYaw, zAxis.x, zAxis.y, zAxis.z);
         
-        _savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
-        _savedGyroRotationY = cPitch + _fingerRotationY;
+        projectionMatrix = GLKMatrix4Rotate(projectionMatrix, _fingerRotationX, xAxis.x, xAxis.y, xAxis.z);
+        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, _fingerRotationY, yAxis.x, yAxis.y, yAxis.z);
         
     }
     
     _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
-    glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 0, _modelViewProjectionMatrix.m);
+    glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 1, _modelViewProjectionMatrix.m);
 }
 
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
@@ -414,11 +415,11 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     [_program use];
     
     glBindVertexArrayOES(_vertexArrayID);
-
+    
     glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 0, _modelViewProjectionMatrix.m);
     
     CVPixelBufferRef pixelBuffer = [self.videoPlayerController retrievePixelBufferToDraw];
-
+    
     CVReturn err;
     if (pixelBuffer != NULL) {
         int frameWidth = (int)CVPixelBufferGetWidth(pixelBuffer);
@@ -488,7 +489,7 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
         glDrawElements ( GL_TRIANGLES, _numIndices,
                         GL_UNSIGNED_SHORT, 0 );
     }
-
+    
     glBindVertexArrayOES(0);
     glUseProgram(0);
 }
@@ -534,14 +535,13 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     if(_isUsingMotion) return;
     UITouch *touch = [touches anyObject];
-    float distX = [touch locationInView:touch.view].x -
-    [touch previousLocationInView:touch.view].x;
-    float distY = [touch locationInView:touch.view].y -
-    [touch previousLocationInView:touch.view].y;
+    float distX = [touch locationInView:touch.view].x - [touch previousLocationInView:touch.view].x;
+    float distY = [touch locationInView:touch.view].y - [touch previousLocationInView:touch.view].y;
     distX *= -0.005;
     distY *= -0.005;
     _fingerRotationX += distY *  _overture / 100;
-    _fingerRotationY -= distX *  _overture / 100;
+    _fingerRotationY -= distX *  _overture / 100;    
+    
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {

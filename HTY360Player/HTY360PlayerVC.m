@@ -127,7 +127,7 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
         [_playerItem removeObserver:self forKeyPath:kKeepUpKey];
         [_playerItem removeObserver:self forKeyPath:kEmptyBufferKey];
         [_playerItem removeOutput:_videoOutput];
-        [_player removeObserver:self forKeyPath:kCurrentItemKey];
+        //        [_player removeObserver:self forKeyPath:kCurrentItemKey];
         //        [_player removeObserver:self forKeyPath:kRateKey];
     } @catch(id anException) {
         //do nothing
@@ -243,7 +243,7 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
                                            [_playerItem removeObserver:self forKeyPath:kKeepUpKey];
                                            [_playerItem removeObserver:self forKeyPath:kEmptyBufferKey];
                                            [_playerItem removeOutput:_videoOutput];
-                                           [_player removeObserver:self forKeyPath:kCurrentItemKey];
+                                           //                                           [_player removeObserver:self forKeyPath:kCurrentItemKey];
                                        } @catch (NSException *exception) {
                                            //donothing
                                        }
@@ -276,10 +276,10 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
                                                                 options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
                                                                 context:AVPlayerDemoPlaybackViewControllerStatusObservationContext];
                                    
-                                   [strongSelf->_player addObserver:self
-                                                         forKeyPath:kCurrentItemKey
-                                                            options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
-                                                            context:AVPlayerDemoPlaybackViewControllerCurrentItemObservationContext];
+                                   //                                   [strongSelf->_player addObserver:self
+                                   //                                                         forKeyPath:kCurrentItemKey
+                                   //                                                            options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
+                                   //                                                            context:AVPlayerDemoPlaybackViewControllerCurrentItemObservationContext];
                                    
                                    //                                   [strongSelf->_player addObserver:self
                                    //                                             forKeyPath:kRateKey
