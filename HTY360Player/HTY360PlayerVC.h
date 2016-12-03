@@ -14,6 +14,14 @@
 -(void)playerFailed;
 -(void)playerBufferEmpty;
 -(void)playerContinueToPlay;
+-(CGRect)getSliderBounds;
+-(void)updateSliderMin:(float)min;
+-(void)updateSliderMax:(float)max;
+-(float)getSliderMin;
+-(float)getSliderMax;
+-(void)setSliderValue:(CGFloat)value;
+-(void)setCurrentTime:(float)current;
+
 @end
 
 @interface HTY360PlayerVC : UIViewController <AVPlayerItemOutputPullDelegate>
@@ -31,4 +39,8 @@
 - (void)pause;
 - (void)gyroButtonRelocate;
 - (void)setupVideoPlaybackForURL:(NSURL*)url;
+-(void)beginScrubbing:(UISlider*)slider;
+-(void)scrub:(UISlider*)slider;
+-(void)endScrubbing:(UISlider*)slider;
+-(CMTime)getDuration;
 @end
