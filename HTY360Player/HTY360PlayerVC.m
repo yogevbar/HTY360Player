@@ -56,6 +56,8 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
 @property (strong, nonatomic) IBOutlet UIButton *backButton;
 @property (strong, nonatomic) IBOutlet UIButton *gyroButton;
 @property (assign, nonatomic) BOOL isFirstVideo;
+@property (nonatomic, strong) id timeObserver;
+@property (nonatomic, assign) CGFloat mRestoreAfterScrubbingRate;
 @property (nonatomic, assign) BOOL isSeekInProgress;;
 @property (nonatomic, assign) CMTime chaseTime;
 
@@ -488,12 +490,16 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
     double duration = CMTimeGetSeconds(playerDuration);
     if (isfinite(duration)) {
         CGRect bounds = [self.delegate getSliderBounds];
+        
         CGFloat width = CGRectGetWidth(bounds);
+        if (width == 0) {
+            return;
+        }
         interval = 0.5f * duration / width;
     }
     
     __weak HTY360PlayerVC* weakSelf = self;
-    _timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(interval, NSEC_PER_SEC)
+    self.timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(interval, NSEC_PER_SEC)
                          /* If you pass NULL, the main queue is used. */
                                                               queue:NULL
                                                          usingBlock:^(CMTime time) {
@@ -624,7 +630,7 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
     }
     
     
-    if (!_timeObserver) {
+    if (!self.timeObserver) {
         CMTime playerDuration = [self playerItemDuration];
         if (CMTIME_IS_INVALID(playerDuration)) {
             return;
@@ -636,7 +642,7 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
             double tolerance = 0.5f * duration / width;
             
             __weak HTY360PlayerVC* weakSelf = self;
-            _timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(tolerance, NSEC_PER_SEC)
+            self.timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(tolerance, NSEC_PER_SEC)
                                                                       queue:NULL
                                                                  usingBlock:^(CMTime time) {
                                                                      [weakSelf syncScrubber];
@@ -644,9 +650,9 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
         }
     }
     
-    if (mRestoreAfterScrubbingRate) {
-        [_player setRate:mRestoreAfterScrubbingRate];
-        mRestoreAfterScrubbingRate = 0.f;
+    if (self.mRestoreAfterScrubbingRate) {
+        [_player setRate:self.mRestoreAfterScrubbingRate];
+        self.mRestoreAfterScrubbingRate = 0.f;
     }
 }
 
