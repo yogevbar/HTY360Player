@@ -366,12 +366,13 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
 #pragma mark - GLKView and GLKViewController delegate methods
 
 - (void)update {
-    
     float aspect = fabs(self.view.bounds.size.width / self.view.bounds.size.height);
     GLKMatrix4 projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(_overture), aspect, 0.1f, 400.0f);
     projectionMatrix = GLKMatrix4Rotate(projectionMatrix, ES_PI, 1.0f, 0.0f, 0.0f);
+    
     GLKMatrix4 modelViewMatrix = GLKMatrix4Identity;
     modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 300.0, 300.0, 300.0);
+    //    if(_isUsingMotion) {
     CMDeviceMotion *d = _motionManager.deviceMotion;
     if (d != nil) {
         CMAttitude *attitude = d.attitude;
@@ -383,33 +384,67 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
             _referenceAttitude = d.attitude;
         }
         
-        float cRoll = attitude.roll; // Up/Down en landscape
-        float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
+        float cRoll = -fabs(attitude.roll); // Up/Down en landscape
         float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
+        //NSLog(@"roll: %.2f pitch: %.2f, yaw: %.2f, (x: %.2f, y: %.2f)", cRoll / ES_PI, cPitch / ES_PI, cYaw / ES_PI, _fingerRotationX / ES_PI, _fingerRotationY / ES_PI);
         
         UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
         if (orientation == UIDeviceOrientationLandscapeRight ){
             cPitch = cPitch*-1; // correct depth when in landscape right
         }
         
-        GLKVector3 xAxis = GLKVector3Make(1, 0, 0);
-        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cRoll, xAxis.x, xAxis.y, xAxis.z);
-        
-        GLKVector3 yAxis = GLKVector3Make(0, 1, 0);
-        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cPitch, yAxis.x, yAxis.y, yAxis.z);
-        
-        GLKVector3 zAxis = GLKVector3Make(0, 0, 1);
-        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, cYaw, zAxis.x, zAxis.y, zAxis.z);
-        
-        projectionMatrix = GLKMatrix4Rotate(projectionMatrix, _fingerRotationX, xAxis.x, xAxis.y, xAxis.z);
-        modelViewMatrix = GLKMatrix4Rotate(modelViewMatrix, _fingerRotationY, yAxis.x, yAxis.y, yAxis.z);
-        
-    }
-    
-    _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
-    glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 1, _modelViewProjectionMatrix.m);
-}
+        if (YES)
+        {
+            GLKQuaternion qSensors = GLKQuaternionMake(d.attitude.quaternion.y, d.attitude.quaternion.x, d.attitude.quaternion.z, d.attitude.quaternion.w);
+            GLKQuaternion qSensorsAndInput = qSensors;
+            GLKQuaternion qYaw;
 
+            if(_fingerRotationY > ES_PI*2/3)
+                _fingerRotationY = -(2*ES_PI*2/3 - _fingerRotationY);
+            else if(_fingerRotationY < -ES_PI*2/3)
+                _fingerRotationY = 2*ES_PI*2/3 + _fingerRotationY;
+            
+
+            GLKMatrix4 mat4RotateY = GLKMatrix4RotateY(modelViewMatrix, _fingerRotationY);
+            qYaw = GLKQuaternionMakeWithMatrix4(mat4RotateY);
+            
+            qYaw = GLKQuaternionNormalize(qYaw);
+            
+            qSensorsAndInput = GLKQuaternionMultiply(qYaw, qSensorsAndInput);
+            qSensorsAndInput = GLKQuaternionNormalize(qSensorsAndInput);
+            GLKQuaternion qPitch;
+            
+            if(_fingerRotationX > ES_PI*2/3)
+                _fingerRotationX = -(2*ES_PI*2/3 - _fingerRotationX);
+            else if(_fingerRotationX < -ES_PI*2/3)
+                _fingerRotationX = 2*ES_PI*2/3 + _fingerRotationX;
+            
+            qPitch = GLKQuaternionNormalize(qPitch);
+            
+            GLKMatrix4 mat4RotateX = GLKMatrix4RotateX(modelViewMatrix, _fingerRotationX);
+            qPitch = GLKQuaternionMakeWithMatrix4(mat4RotateX);
+            
+            qSensorsAndInput = GLKQuaternionMultiply(qPitch, qSensorsAndInput);
+            qSensorsAndInput = GLKQuaternionNormalize(qSensorsAndInput);
+            
+            GLKMatrix4 mat4RollCorrection = GLKMatrix4RotateZ(modelViewMatrix, 0.00001f);
+            GLKQuaternion qRollCorrection = GLKQuaternionMakeWithMatrix4(mat4RollCorrection);
+            
+            qRollCorrection = GLKQuaternionNormalize(qRollCorrection);
+            
+            qSensorsAndInput = GLKQuaternionMultiply(qRollCorrection, qSensorsAndInput);
+            qSensorsAndInput = GLKQuaternionNormalize(qSensorsAndInput);
+            
+            GLKMatrix4 matInput = GLKMatrix4MakeWithQuaternion(qSensorsAndInput);
+            
+            modelViewMatrix = GLKMatrix4Multiply(modelViewMatrix, matInput);
+            
+            _savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
+            _savedGyroRotationY = cPitch + _fingerRotationY;
+        }
+    }
+    _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
+}
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
     [_program use];
@@ -540,7 +575,7 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     distX *= -0.005;
     distY *= -0.005;
     _fingerRotationX += distY *  _overture / 100;
-    _fingerRotationY -= distX *  _overture / 100;    
+    _fingerRotationY -= distX *  _overture / 100;
     
 }
 

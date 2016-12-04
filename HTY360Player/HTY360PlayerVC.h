@@ -14,6 +14,19 @@
 -(void)playerFailed;
 -(void)playerBufferEmpty;
 -(void)playerContinueToPlay;
+-(void)playerItemDidReachEnd;
+-(void)disableScrubber;
+-(void)enableScrubber;
+-(void)showLoader;
+-(void)hideLoader;
+-(CGRect)getSliderBounds;
+-(void)updateSliderMin:(float)min;
+-(void)updateSliderMax:(float)max;
+-(float)getSliderMin;
+-(float)getSliderMax;
+-(void)setSliderValue:(CGFloat)value;
+-(void)setCurrentTime:(float)current;
+
 @end
 
 @interface HTY360PlayerVC : UIViewController <AVPlayerItemOutputPullDelegate>
@@ -23,12 +36,15 @@
 
 - (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil url:(NSURL*)url;
 - (CVPixelBufferRef)retrievePixelBufferToDraw;
-- (void)toggleControls;
-
+- (void)setVideoURL:(NSURL *)videoURL;
 - (void)configureGLKView;
 - (void)removeGLKView;
 - (void)play;
 - (void)pause;
-- (void)gyroButtonRelocate;
-- (void)setupVideoPlaybackForURL:(NSURL*)url;
+- (void)setupVideoPlaybackForURL:(NSURL*)url isNew:(BOOL)isNew;
+- (void)beginScrubbing:(UISlider*)slider;
+- (void)scrub:(UISlider*)slider;
+- (void)endScrubbing:(UISlider*)slider;
+- (CMTime)getDuration;
+- (void)removeAllObservers;
 @end
