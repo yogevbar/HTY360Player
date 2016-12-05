@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
+
+
 @protocol HTY360PlayerVCDelegate
 -(void)playerUnknown;
 -(void)playerReadyToPlay;
