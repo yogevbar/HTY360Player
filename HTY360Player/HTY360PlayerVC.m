@@ -48,10 +48,11 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
 
 @implementation HTY360PlayerVC
 
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil url:(NSURL*)url {
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil url:(NSURL*)url lastTime:(CMTime)lastTime{
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
         [self setVideoURL:url];
+        self.lastTime = lastTime;
     }
     return self;
 }
@@ -66,7 +67,7 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
     
-    [self setupVideoPlaybackForURL:_videoURL isNew:false];
+    [self setupVideoPlaybackForURL:_videoURL isNew:true];
     [self configureGLKView];
     self.isFirstVideo = true;
 }
@@ -161,8 +162,6 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
         _myVideoOutputQueue = dispatch_queue_create("myVideoOutputQueue", DISPATCH_QUEUE_SERIAL);
         [_videoOutput setDelegate:self queue:_myVideoOutputQueue];
         _player = [[AVPlayer alloc] init];
-    }else{
-        _lastTime = _player.currentTime;
     }
     
     // Do not take mute button into account
@@ -220,6 +219,9 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
                                    [strongSelf->_playerItem addOutput:strongSelf->_videoOutput];
                                    [strongSelf->_player replaceCurrentItemWithPlayerItem:strongSelf->_playerItem];
                                    [strongSelf->_videoOutput requestNotificationOfMediaDataChangeWithAdvanceInterval:ONE_FRAME_DURATION];
+                                   if (!CMTIME_IS_INVALID(weakSelf.lastTime)) {
+                                       [strongSelf->_playerItem seekToTime:weakSelf.lastTime toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+                                   }
                                    strongSelf->seekToZeroBeforePlay = NO;
                                    
                                    if (strongSelf.isFirstVideo) {
@@ -392,11 +394,13 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
     return(kCMTimeInvalid);
 }
 
+-(CMTime)playerCurrentTime{
+    return ([_playerItem currentTime]);
+}
+
 - (void)syncScrubber {
     CMTime playerDuration = [self playerItemDuration];
     if (CMTIME_IS_INVALID(playerDuration)) {
-        [self.delegate updateSliderMin:0.0];
-        [self.delegate setCurrentTime:0.0];
         return;
     }
     
@@ -646,4 +650,9 @@ static void *AVPlayerItemStatusContext = &AVPlayerItemStatusContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self removePlayerTimeObserver];
 }
+
+-(AVPlayerItemStatus)getPlayerStatus{
+    return _playerItem.status;
+}
+
 @end

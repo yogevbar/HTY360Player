@@ -36,7 +36,7 @@
 @property (weak, nonatomic) id<HTY360PlayerVCDelegate> delegate;
 @property (strong, nonatomic) IBOutlet UIView *playerControlBackgroundView;
 
-- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil url:(NSURL*)url;
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil url:(NSURL*)url lastTime:(CMTime)lastTime;
 - (CVPixelBufferRef)retrievePixelBufferToDraw;
 - (void)setVideoURL:(NSURL *)videoURL;
 - (void)configureGLKView;
@@ -49,4 +49,6 @@
 - (void)endScrubbing:(UISlider*)slider;
 - (CMTime)getDuration;
 - (void)removeAllObservers;
+- (CMTime)playerCurrentTime;
+-(AVPlayerItemStatus)getPlayerStatus;
 @end
