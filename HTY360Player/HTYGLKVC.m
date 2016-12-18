@@ -54,9 +54,12 @@ GLint uniforms[NUM_UNIFORMS];
     float _savedGyroRotationX;
     float _savedGyroRotationY;
     float _fPitchCorrection;
+    float _fMouseRollCorrection;
     float _fRollCorrection;
+    float _fRoll;
     
     Boolean _bInitializedCorrections;
+    Boolean _bUpRight;
     
     CGFloat _overture;
     
@@ -104,13 +107,18 @@ GLint uniforms[NUM_UNIFORMS];
     UIPinchGestureRecognizer *pinchRecognizer = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchGesture:)];
     [view addGestureRecognizer:pinchRecognizer];
     
-    
-    self.preferredFramesPerSecond = 30.0f;
+    self.preferredFramesPerSecond = 60.0f;
     
     _overture = DEFAULT_OVERTURE;
     
     // Set the default conversion to BT.709, which is the standard for HDTV.
     _preferredConversion = kColorConversion709;
+    
+    _fRoll = 0.0f;
+    
+    _fMouseRollCorrection = 0.0f;
+    
+    _bUpRight = false;
     
     [self setupGL];
     
@@ -121,8 +129,23 @@ GLint uniforms[NUM_UNIFORMS];
     return UIInterfaceOrientationMaskLandscape;
 }
 
--(void) detectOrientation {
-    //    _referenceAttitude = nil;
+-(void) detectOrientation
+{
+    //[_motionManager stopDeviceMotionUpdates];
+    //[_motionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXMagneticNorthZVertical];
+    //else if (orientation == UIDeviceOrientationPortrait )
+    //  [_motionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical];
+    
+    //[self tearDownGL];
+    
+    //[self setupGL];
+}
+
+-(void) viewDidDisappear:(BOOL)animated
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
 }
 
 - (void)dealloc {
@@ -349,6 +372,22 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     _motionManager.gyroUpdateInterval = 1.0f / 60;
     _motionManager.showsDeviceMovementDisplay = YES;
     
+    /*
+     if([_motionManager isGyroAvailable] == YES)
+     {
+     [_motionManager setGyroUpdateInterval:0.02];
+     
+     [_motionManager startGyroUpdates];
+     }
+     
+     if([_motionManager isAccelerometerAvailable] == YES)
+     {
+     [_motionManager setAccelerometerUpdateInterval:0.02];
+     
+     [_motionManager startAccelerometerUpdates];
+     }
+     */
+    
     [_motionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryCorrectedZVertical];
     
     //[_motionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXTrueNorthZVertical];
@@ -363,14 +402,22 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     
     _bInitializedCorrections = false;
     
-    //_isUsingMotion = YES;
+    _isUsingMotion = YES;
 }
 
-- (void)stopDeviceMotion {
+- (void)stopDeviceMotion
+{
     _fingerRotationX = _savedGyroRotationX -_referenceAttitude.roll - ROLL_CORRECTION;
     _fingerRotationY = _savedGyroRotationY;
     
     _isUsingMotion = NO;
+    
+    if([_motionManager isGyroActive] == YES)
+        [_motionManager stopGyroUpdates];
+    
+    if([_motionManager isAccelerometerActive] == YES)
+        [_motionManager stopAccelerometerUpdates];
+    
     [_motionManager stopDeviceMotionUpdates];
     _motionManager = nil;
 }
@@ -392,50 +439,217 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
 }
 
 
-- (void)update {
+- (void)update
+{
     float aspect = fabs(self.view.bounds.size.width / self.view.bounds.size.height);
     GLKMatrix4 projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(_overture), aspect, 0.1f, 400.0f);
     projectionMatrix = GLKMatrix4Rotate(projectionMatrix, ES_PI, 1.0f, 0.0f, 0.0f);
+    
     GLKMatrix4 modelViewMatrix = GLKMatrix4Identity;
     modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, 300.0, 300.0, 300.0);
-    //    if(_isUsingMotion) {
-    CMDeviceMotion *d = _motionManager.deviceMotion;
-    if (d != nil) {
-        CMAttitude *attitude = d.attitude;
+    
+    if(_isUsingMotion)
+    {
+        CMDeviceMotion *d = _motionManager.deviceMotion;
         
-        if (_referenceAttitude != nil) {
-            [attitude multiplyByInverseOfAttitude:_referenceAttitude];
-        } else {
-            //NSLog(@"was nil : set new attitude", nil);
-            _referenceAttitude = d.attitude;
+        if (d != nil)
+        {
+            CMAttitude *attitude = d.attitude;
+            
+            //GLKVector3 v3Gyro = GLKVector3Make(_motionManager.gyroData.rotationRate.x, _motionManager.gyroData.rotationRate.y, _motionManager.gyroData.rotationRate.z);
+            
+            //GLKVector3 vAccel = GLKVector3Make(_motionManager.accelerometerData.acceleration.x, _motionManager.accelerometerData.acceleration.y, _motionManager.accelerometerData.acceleration.z);
+            
+            GLKVector3 vGravity = GLKVector3Make( d.gravity.x, d.gravity.y, d.gravity.z );
+            
+            if( _bInitializedCorrections == false )
+            {
+                _referenceAttitude = d.attitude;
+                _bInitializedCorrections = true;
+            }
+            
+            //NSLog(@"Gyro X: %.2f Gyro Y: %.2f, Gyro Z: %.2f", v3Gyro.x, v3Gyro.y, v3Gyro.z);
+            //NSLog(@"Accel X: %.2f Accel Y: %.2f, Accel Z: %.2f", vAccel.x, vAccel.y, vAccel.z);
+            //NSLog(@"Gravity X: %.2f Gravity Y: %.2f, Gravity Z: %.2f", vGravity.x, vGravity.y, vGravity.z);
+            //NSLog(@"Yaw: %.2f Pitch: %.2f, Roll: %.2f", attitude.yaw, attitude.pitch, attitude.roll);
+            
+            /*
+             if (_referenceAttitude != nil) {
+             [attitude multiplyByInverseOfAttitude:_referenceAttitude];
+             } else {
+             //NSLog(@"was nil : set new attitude", nil);
+             _referenceAttitude = d.attitude;
+             }
+             
+             float cRoll = -fabs(attitude.roll); // Up/Down en landscape
+             float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
+             float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
+             //NSLog(@"roll: %.2f pitch: %.2f, yaw: %.2f, (x: %.2f, y: %.2f)", cRoll / ES_PI, cPitch / ES_PI, cYaw / ES_PI, _fingerRotationX / ES_PI, _fingerRotationY / ES_PI);
+             
+             UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
+             if (orientation == UIDeviceOrientationLandscapeRight ){
+             cPitch = cPitch*-1; // correct depth when in landscape right
+             }
+             */
+            
+            _fMouseRollCorrection = -attitude.pitch;
+            
+            //Change the gravity correction to accelerometer correction .
+            
+            if (YES)
+            {
+                float fYaw, fPitch, fRoll;
+                
+                UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
+                
+                switch(orientation)
+                {
+                    case UIDeviceOrientationLandscapeRight:
+                    case UIDeviceOrientationLandscapeLeft:
+                    case UIDeviceOrientationUnknown:
+                    {
+                        fYaw = attitude.yaw;
+                        fPitch = attitude.roll + M_PI*0.5f;
+                        fRoll = -attitude.pitch;
+                        _bUpRight = false;
+                    }
+                        break;
+                        
+                    case UIDeviceOrientationPortrait:
+                    case UIDeviceOrientationPortraitUpsideDown:
+                    {
+                        fYaw = attitude.yaw;
+                        fPitch = -attitude.pitch;
+                        fRoll = attitude.roll;
+                        _bUpRight = true;
+                    }
+                        break;
+                        
+                    case UIDeviceOrientationFaceUp:
+                    case UIDeviceOrientationFaceDown:
+                    {
+                        fYaw = attitude.yaw;
+                        fPitch = attitude.roll + M_PI*0.5f;
+                        fRoll = -attitude.pitch;
+                    }
+                        break;
+                }
+                
+                // Reverse matrix multiplication .
+                GLKMatrix4 matSensorsAndInput = GLKMatrix4Identity;
+                
+                if( _bUpRight )
+                {
+                    // Sensors .
+                    GLKQuaternion qSensors = GLKQuaternionMake(d.attitude.quaternion.y, d.attitude.quaternion.x, d.attitude.quaternion.z, d.attitude.quaternion.w);
+                    
+                    GLKMatrix4 matSensors = GLKMatrix4MakeWithQuaternion(qSensors);
+                    
+                    //GLKQuaternion qPitchCorrection = GLKQuaternionMakeWithAngleAndAxis(M_PI_2, 1.0f, 0.0f, 0.0f);
+                    
+                    //qSensors =  GLKQuaternionMultiply(qSensors, qPitchCorrection);
+                    
+                    matSensors = GLKMatrix4RotateX(matSensors, M_PI_2);
+                    
+                    // Finger Input .
+                    //GLKQuaternion qFingerYaw = GLKQuaternionMakeWithAngleAndAxis(_fingerRotationX, 0.0f, 1.0f, 0.0f);
+                    
+                    //GLKVector3 v3XAxiesRotated = GLKQuaternionRotateVector3(qFingerYaw, GLKVector3Make(1.0f, 0.0f, 0.0f));
+                    
+                    //GLKQuaternion qFingerPitch = GLKQuaternionMakeWithAngleAndAxis(_fingerRotationY, 1.0f/*v3XAxiesRotated.x*/, 0.0f/*v3XAxiesRotated.y*/, 0.0f/*v3XAxiesRotated.z*/);
+                    
+                    //GLKQuaternion qSandI = GLKQuaternionMultiply(qFingerYaw, qSensors);
+                    
+                    //qSandI = GLKQuaternionMultiply(qFingerPitch, qSandI);
+                    
+                    //GLKMatrix4 matInput = GLKMatrix4MakeWithQuaternion(qSandI);
+                    
+                    //GLKQuaternion qSensors = GLKQuaternionMakeWithMatrix4(matSensorsAndInput);
+                    
+                    //matSensorsAndInput = GLKMatrix4RotateX(matSensors, _fingerRotationX);
+                    
+                    //GLKVector3 v3YAxiesRotated = GLKMatrix4MultiplyVector3(matInput, GLKVector3Make(0.0f, 1.0f, 0.0f));
+                    
+                    matSensorsAndInput = GLKMatrix4RotateY(matSensors, _fingerRotationY);
+                    
+                    //matInput = GLKMatrix4RotateWithVector3(matInput, _fingerRotationY, v3YAxiesRotated);
+                    
+                    //matSensorsAndInput = GLKMatrix4Multiply(matSensors, matInput);
+                    
+                    //GLKQuaternion qSandI = GLKQuaternionMultiply(qSensors, qFingerPitch);
+                    
+                    //qSandI = GLKQuaternionMultiply(qSandI, qFingerYaw);
+                    
+                    //matSensorsAndInput = GLKMatrix4MakeWithQuaternion(qSandI);
+                    
+                    //matSensorsAndInput = GLKMatrix4Multiply(matSensors, matSensorsAndInput);
+                    
+                    //GLKQuaternion qYaw = GLKQuaternionMakeWithAngleAndAxis(fYaw, 0.0f, 1.0f, 0.0f);
+                    //GLKQuaternion qPitch = GLKQuaternionMakeWithAngleAndAxis(fPitch, 1.0f, 0.0f, 0.0f);
+                    //GLKQuaternion qRoll = GLKQuaternionMakeWithAngleAndAxis(fRoll, 0.0f, 0.0f, 1.0f);
+                    
+                    //GLKQuaternion qSensors = GLKQuaternionMultiply( qRoll, GLKQuaternionMultiply(qYaw, qPitch));
+                    
+                    // Finger Pitch .
+                    //matSensorsAndInput = GLKMatrix4RotateX(matSensorsAndInput, -_fingerRotationY);
+                    //GLKQuaternion qFingerPitch = GLKQuaternionMakeWithMatrix4(matSensorsAndInput);
+                    
+                    // Finger Yaw .
+                    //matSensorsAndInput = GLKMatrix4RotateZ(matSensorsAndInput, _fingerRotationX);
+                    //GLKQuaternion qFingerYaw = GLKQuaternionMakeWithMatrix4(GLKMatrix4RotateY(GLKMatrix4Identity, _fingerRotationY));
+                    
+                    //matSensorsAndInput = GLKMatrix4RotateX(matSensorsAndInput, ROLL_CORRECTION);
+                    
+                    //GLKQuaternion qSandI = GLKQuaternionMultiply( qPitch, GLKQuaternionMultiply(qSensorsAndInput, qYaw) );
+                    
+                    //matSensorsAndInput = GLKMatrix4MakeWithQuaternion(qSensors);
+                }
+                else
+                {
+                    // Pitch + Finger Pitch .
+                    if( (fPitch + _fingerRotationX) >= M_PI_2 )
+                        fPitch = M_PI_2;
+                    else if( (fPitch + _fingerRotationX) <= -M_PI_2 )
+                        fPitch = -M_PI_2;
+                    else
+                        fPitch = fPitch + _fingerRotationX;
+                    
+                    matSensorsAndInput = GLKMatrix4RotateX(matSensorsAndInput, fPitch);
+                    //GLKQuaternion qPitch = GLKQuaternionMakeWithMatrix4(matSensorsAndInput);
+                    //matSensorsAndInput = GLKMatrix4RotateX(matSensorsAndInput, v3Accel.x);
+                    
+                    // Yaw .
+                    matSensorsAndInput = GLKMatrix4RotateY(matSensorsAndInput, fYaw);
+                    //GLKQuaternion qYaw = GLKQuaternionMakeWithMatrix4(GLKMatrix4RotateY(GLKMatrix4Identity, _fingerRotationY));
+                    //matSensorsAndInput = GLKMatrix4RotateY(matSensorsAndInput, v3Accel.y);
+                    
+                    // Roll .
+                    
+                    //if( (fRoll >= (-M_PI*0.15f)) && (fRoll < (M_PI*0.15f)) )
+                    _fRoll = -attitude.pitch;
+                    
+                    matSensorsAndInput = GLKMatrix4RotateZ(matSensorsAndInput, _fRoll);
+                    //GLKQuaternion qRoll = GLKQuaternionMakeWithMatrix4(GLKMatrix4RotateY(GLKMatrix4Identity, _fingerRotationY));
+                    //matSensorsAndInput = GLKMatrix4RotateZ(matSensorsAndInput, v3Accel.z);
+                    
+                    // Finger Yaw .
+                    matSensorsAndInput = GLKMatrix4RotateY(matSensorsAndInput, _fingerRotationY);
+                }
+                
+                modelViewMatrix = GLKMatrix4Multiply(matSensorsAndInput, modelViewMatrix);
+                
+                //_savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
+                //_savedGyroRotationY = cPitch + _fingerRotationY;
+            }
         }
-        
-        float cRoll = attitude.roll; // Up/Down en landscape
-        float cYaw = attitude.yaw;  // Left/ Right en landscape -> pas besoin de prendre l'opposé
-        float cPitch = attitude.pitch; // Depth en landscape -> pas besoin de prendre l'opposé
-        
-        UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
-        if (orientation == UIDeviceOrientationLandscapeRight ){
-            cPitch = cPitch*-1; // correct depth when in landscape right
-        }
-        
-        
-        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, cRoll); // Up/Down axis
-        modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, cPitch);
-        modelViewMatrix = GLKMatrix4RotateZ(modelViewMatrix, cYaw);
-        
-        modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, ROLL_CORRECTION);
-        
+    }
+    else
+    {
         modelViewMatrix = GLKMatrix4RotateX(modelViewMatrix, _fingerRotationX);
         modelViewMatrix = GLKMatrix4RotateY(modelViewMatrix, _fingerRotationY);
-        
-        _savedGyroRotationX = cRoll + ROLL_CORRECTION + _fingerRotationX;
-        _savedGyroRotationY = cPitch + _fingerRotationY;
-        
     }
     
     _modelViewProjectionMatrix = GLKMatrix4Multiply(projectionMatrix, modelViewMatrix);
-    glUniformMatrix4fv(uniforms[UNIFORM_MODELVIEWPROJECTION_MATRIX], 1, 0, _modelViewProjectionMatrix.m);
 }
 
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
@@ -553,15 +767,17 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
 
 #pragma mark - touches
 
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    if(_isUsingMotion) return;
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //if(_isUsingMotion) return;
     for (UITouch *touch in touches) {
         [_currentTouches addObject:touch];
     }
 }
 
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    if(_isUsingMotion) return;
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //if(_isUsingMotion) return;
     UITouch *touch = [touches anyObject];
     float distX = [touch locationInView:touch.view].x -
     [touch previousLocationInView:touch.view].x;
@@ -569,8 +785,21 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     [touch previousLocationInView:touch.view].y;
     distX *= -0.005;
     distY *= -0.005;
-    _fingerRotationX += distY *  _overture / 100;
-    _fingerRotationY -= distX *  _overture / 100;
+    
+    float fDX = distY * _overture / 100;
+    float fDY = distX * _overture / 100;
+    
+    float fDRotationX = (fDX*cosf(_fMouseRollCorrection) + fDY*sinf(_fMouseRollCorrection));
+    float fDRotationY = (-fDX*sinf(_fMouseRollCorrection) + fDY*cosf(_fMouseRollCorrection));
+    
+    if( ((_fingerRotationX + fDRotationX) < M_PI_2) && ((_fingerRotationX + fDRotationX) > -M_PI_2) )
+        _fingerRotationX += fDRotationX;
+    
+    //if( ((_fingerRotationY - fDRotationY) < M_PI_2) && ((_fingerRotationY - fDRotationY) > -M_PI_2) )
+    _fingerRotationY -= fDRotationY;
+    
+    //_fingerRotationX += fDX;
+    //_fingerRotationY += fDY;
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
@@ -593,5 +822,4 @@ int esGenSphere ( int numSlices, float radius, float **vertices, float **normals
     if(_overture<MIN_OVERTURE)
         _overture = MIN_OVERTURE;
 }
-
 @end
